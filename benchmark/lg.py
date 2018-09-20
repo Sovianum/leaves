@@ -18,7 +18,7 @@ logging.info(f'start loading test data from {params.data}')
 X, _ = load_svmlight_file(params.data, zero_based=True)
 logging.info(f'load test data: {X.shape}')
 
-ytrue = np.genfromtxt(params.true)
+ytrue = np.genfromtxt(params.true, delimiter='\t')
 logging.info(f'load true predictions from {params.true}')
 
 logging.info(f'start loading model from {params.model}')

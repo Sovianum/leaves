@@ -436,3 +436,88 @@ func InnerTestLGMulticlass(t *testing.T, nThreads int) {
 		t.Errorf("different Predict prediction: %s", err.Error())
 	}
 }
+
+func TestLGWine(t *testing.T) {
+	InnerTestLGWine(t, 1)
+	InnerTestLGWine(t, 2)
+	InnerTestLGWine(t, 3)
+	InnerTestLGWine(t, 4)
+}
+
+func InnerTestLGWine(t *testing.T, nThreads int) {
+	// loading test data
+	path := filepath.Join("testdata", "wine_test.libsvm")
+	reader, err := os.Open(path)
+	if err != nil {
+		t.Skipf("Skipping due to absence of %s", path)
+	}
+	bufReader := bufio.NewReader(reader)
+	mat, err := CSRMatFromLibsvm(bufReader, 0, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// loading model
+	path = filepath.Join("testdata", "lgwine.model")
+	model, err := LGEnsembleFromFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// loading true predictions as DenseMat
+	path = filepath.Join("testdata", "lgwine_true_predictions.txt")
+	reader, err = os.Open(path)
+	if err != nil {
+		t.Skipf("Skipping due to absence of %s", path)
+	}
+	bufReader = bufio.NewReader(reader)
+	truePredictions, err := DenseMatFromCsv(bufReader, 0, false, "\t", 0.0)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// do predictions
+	predictions := make([]float64, mat.Rows()*model.nClasses)
+	model.PredictCSR(mat.RowHeaders, mat.ColIndexes, mat.Values, predictions, 0, nThreads)
+	// compare results
+	const tolerance = 1e-12
+	if err := almostEqualFloat64Slices(truePredictions.Values, predictions, tolerance); err != nil {
+		t.Errorf("different predictions: %s", err.Error())
+	}
+}
+
+func BenchmarkLGWine_csr_1thread(b *testing.B) {
+	InnerBenchmarkLGWine(b, 1)
+}
+
+func BenchmarkLGWine_csr_4thread(b *testing.B) {
+	InnerBenchmarkLGWine(b, 4)
+}
+
+func InnerBenchmarkLGWine(b *testing.B, nThreads int) {
+	// loading test data
+	path := filepath.Join("testdata", "wine_test.libsvm")
+	reader, err := os.Open(path)
+	if err != nil {
+		b.Skipf("Skipping due to absence of %s", path)
+	}
+	bufReader := bufio.NewReader(reader)
+	mat, err := CSRMatFromLibsvm(bufReader, 0, true)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	// loading model
+	path = filepath.Join("testdata", "lgwine.model")
+	model, err := LGEnsembleFromFile(path)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	// do benchmark
+	b.ResetTimer()
+	predictions := make([]float64, mat.Rows()*model.NClasses())
+	for i := 0; i < b.N; i++ {
+		model.PredictCSR(mat.RowHeaders, mat.ColIndexes, mat.Values, predictions, 0, nThreads)
+	}
+}

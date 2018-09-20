@@ -23,3 +23,11 @@ $python lg.py -d  ../testdata/msltr_1000examples_test.libsvm \
               -t ../testdata/lgmsltr_1000examples_true_predictions.txt \
               -j $j
 done
+
+for j in 1 4; do
+echo "---=== lgwine.py ($j threads) ===---"
+$python lg.py -d  ../testdata/wine_test.libsvm \
+              -m ../testdata/lgwine.model \
+              -t ../testdata/lgwine_true_predictions.txt \
+              -j $j
+done
